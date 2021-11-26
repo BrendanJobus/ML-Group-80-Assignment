@@ -39,23 +39,25 @@ for neighborhood in listOfNeighborhoods:
 		for element in bsobj.findAll('div', {'class': 'list-card-info'}):
 			for a in element.find_all('a', href=True):
 				print("Found the URL:", a['href'])
-				gettingUrl = True
-				while(gettingUrl):
+				getSummary = True
+				getDetails = True
+				while(getSummary or getDetails):
 					href_html = requests.get(url=a['href'], headers=header)
 					if href_html.status_code != 200:
 						break
 
 					href_bsobj = soup(href_html.content, 'html.parser')
-					if href_bsobj.find('div', {'class': 'summary-container'}):
+					if href_bsobj.find('div', {'class': 'summary-container'}) and getSummary:
 						data = href_bsobj.find('div', {'class': 'summary-container'}).get_text()
-						# details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
 						print(data)
-						gettingUrl = False
+						getSummary = False
+					if href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and getDetails:
+						details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
+						print(details)
+						getDetails = False
 					else:
 						time.sleep(3)
-				break
-			break
-		break
+
 					# print(details)
 				# else:
 				# 	print(href_bsobj.prettify())
