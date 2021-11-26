@@ -4,6 +4,27 @@ import re
 import requests 
 import time
 
+def parseData(data, address):
+	priceAndBed, rest = data.split("bd")
+	bath, rest = rest.split("ba")
+	area, _ = rest.split("sqft")
+	startOfBeds = priceAndBed.rindex(',') + 4
+	price = priceAndBed[:startOfBeds].replace("$", "")
+	bed = priceAndBed[startOfBeds:]
+
+	if bed.find('-'):
+		bed = 0
+	if bath.find('-'):
+		bath = 0
+	if area.find('-'):
+		area = 0
+
+	prices.append(price); beds.append(bed); baths.append(bath); areas.append(area); addresses.append(address)
+	print(price, bed, bath, area, address)
+
+def parseDetails(details):
+	print(details)
+
 header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 }
@@ -47,16 +68,17 @@ for neighborhood in listOfNeighborhoods:
 						break
 
 					href_bsobj = soup(href_html.content, 'html.parser')
-					if href_bsobj.find('div', {'class': 'summary-container'}) and getSummary:
-						data = href_bsobj.find('div', {'class': 'summary-container'}).get_text()
-						print(data)
+					if href_bsobj.find('div', {'class': 'ds-summary-row-container'}) and getSummary:
+						data = href_bsobj.find('div', {'class': 'ds-summary-row-container'}).get_text()
+						address = href_bsobj.find('h1', {'id': 'ds-chip-property-address'}).get_text()
 						getSummary = False
+						parseData(data, address)
 					if href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and getDetails:
 						details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
-						print(details)
 						getDetails = False
+						parseDetails(details)
 					else:
-						time.sleep(3)
+						time.sleep(1)
 
 					# print(details)
 				# else:
@@ -81,8 +103,6 @@ for neighborhood in listOfNeighborhoods:
 #                 #print(address, price, bed, bath, area)
 #                 print(address, price)
 
-# #df = pd.DataFrame({'Address': addresses, 'Price': prices, 'Beds': beds, 'Baths': baths, 'Area': areas})
-# df = pd.DataFrame({'Address': addresses, 'Price': prices})
-# df.to_csv('listings.csv', index=False, encoding='utf-8')
-
-# print(df.size)
+df = pd.DataFrame({'Address': addresses, 'Price': prices, 'Beds': beds, 'Baths': baths, 'Area': areas})
+df.to_csv('listings.csv', index=False, encoding='utf-8')
+print(df.size)
