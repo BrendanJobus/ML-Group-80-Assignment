@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup as soup
 import pandas as pd
-import re
 import requests 
 import time
 
@@ -11,19 +10,21 @@ def parseData(data, address):
 	startOfBeds = priceAndBed.rindex(',') + 4
 	price = priceAndBed[:startOfBeds].replace("$", "")
 	bed = priceAndBed[startOfBeds:]
-
-	if bed.find('-'):
+	price = price.replace(",", "")
+	if bed.find("--") != -1:
 		bed = 0
-	if bath.find('-'):
+	else:
+		bed = int(bed)
+	if bath.find("--") != -1:
 		bath = 0
-	if area.find('-'):
+	else:
+		bath = int(bath)
+	if area.find("--") != -1:
 		area = 0
-
+	else:
+		area = int(area.replace(",", ""))
 	prices.append(price); beds.append(bed); baths.append(bath); areas.append(area); addresses.append(address)
 	print(price, bed, bath, area, address)
-
-def parseDetails(details):
-	print(details)
 
 header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
@@ -34,6 +35,7 @@ beds = []
 baths = []
 addresses = []
 areas = []
+yearOfConstruction = []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
 
@@ -41,15 +43,16 @@ startTime = time.perf_counter()
 timeSinceLastHibernate = 0
 
 for neighborhood in listOfNeighborhoods:
-	for page in range (1,2) :
-		if time.perf_counter() - startTime >= 20:
-			print("sleep")
+	for page in range (1,100) :
+		if timeSinceLastHibernate == 180:
+			print("hibernating")
+			time.sleep(120)
+			timeSinceLastHibernate = 0
+		elif time.perf_counter() - startTime >= 20:
+			print("sleeping")
 			time.sleep(20)
 			startTime = time.perf_counter()
 			timeSinceLastHibernate += 20
-		elif timeSinceLastHibernate == 180:
-			time.sleep(120)
-			timeSinceLastHibernate = 0
 
 		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
 		html = requests.get(url=url, headers=header)
@@ -74,35 +77,15 @@ for neighborhood in listOfNeighborhoods:
 						getSummary = False
 						parseData(data, address)
 					if href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and getDetails:
-						details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
+						#details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
+						# Just going to get the year built as I don't think any of the others are going to be very useful
+						yearList = (href_bsobj.find('li', {'class', 'hdp__sc-1esuh59-0 dmmleM'}))
+						yearBuilt = href_bsobj.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})[3].get_text()
+						yearOfConstruction.append(yearBuilt)
 						getDetails = False
-						parseDetails(details)
 					else:
 						time.sleep(1)
 
-					# print(details)
-				# else:
-				# 	print(href_bsobj.prettify())
-
-
-#         for element in bsobj.findAll('div', {'class': 'list-card-info'}):
-#             if element.find('address', {'class': 'list-card-addr'}):
-#                 address = element.find('address', {'class': 'list-card-addr'}).get_text()
-#                 price = element.find('div', {'class': 'list-card-price'}).get_text().replace('$','')
-#                 otherInfo = element.findAll('li')
-#                 otherer = element.find('ul')
-#                 print(otherInfo)
-#                 #bed = otherInfo[0].get_text().split(' ')[0]
-#                 #bath = otherInfo[1].get_text().split(' ')[0]
-#                 #area = otherInfo[2].get_text().split(' ')[0]
-#                 prices.append(price)
-#                 #beds.append(bed)
-#                 #baths.append(bath)
-#                 addresses.append(address)
-#                 #areas.append(area)
-#                 #print(address, price, bed, bath, area)
-#                 print(address, price)
-
-df = pd.DataFrame({'Address': addresses, 'Price': prices, 'Beds': beds, 'Baths': baths, 'Area': areas})
+df = pd.DataFrame({'Address': addresses, 'Price': prices, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction})
 df.to_csv('listings.csv', index=False, encoding='utf-8')
 print(df.size)
