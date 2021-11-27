@@ -68,7 +68,7 @@ for neighborhood in listOfNeighborhoods:
 			print("Caught duplicate page, ignoring\nIf next page is also duplicate, go to next borough")
 			duplicatePages += 1
 			continue
-		else:
+		elif html.content == firstPage and duplicatePages > 1:
 			break
 
 		bsobj = soup(html.content, 'html.parser')
@@ -98,9 +98,12 @@ for neighborhood in listOfNeighborhoods:
 							if detail.get_text().find("Built") != -1:
 								yearBuilt = detail.get_text()
 								yearBuilt = int(yearBuilt[9:])
-							elif detail.get_text().find("Parking") != -1:
+							elif detail.get_text().find("Parking space") != -1:
 								parking = detail.get_text()
 								parking = int(parking.replace("Parking space", ""))
+							elif detail.get_text().find("Parking spaces") != -1:
+								parking = detail.get_text()
+								parking = int(parking.replace("Parking spaces", ""))
 						
 						yearOfConstruction.append(yearBuilt)
 						parkingSpaces.append(parking)
