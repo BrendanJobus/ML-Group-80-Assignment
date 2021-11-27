@@ -36,6 +36,7 @@ baths = []
 addresses = []
 areas = []
 yearOfConstruction = []
+parkingSpaces = []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
 
@@ -55,6 +56,7 @@ for neighborhood in listOfNeighborhoods:
 			timeSinceLastHibernate += 20
 
 		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
+		print(url)
 		html = requests.get(url=url, headers=header)
 		if html.status_code != 200:
 			break
@@ -79,13 +81,24 @@ for neighborhood in listOfNeighborhoods:
 					if href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and getDetails:
 						#details = href_bsobj.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}).get_text()
 						# Just going to get the year built as I don't think any of the others are going to be very useful
-						yearList = (href_bsobj.find('li', {'class', 'hdp__sc-1esuh59-0 dmmleM'}))
-						yearBuilt = href_bsobj.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})[3].get_text()
+						yearBuilt = 0
+						parking = 0
+						deets = href_bsobj.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
+						for detail in deets:
+							if detail.get_text().find("Built") != -1:
+								yearBuilt = detail.get_text()
+								yearBuilt = int(yearBuilt[9:])
+							elif detail.get_text().find("Parking") != -1:
+								parking = detail.get_text()
+								parking = int(parking.replace("Parking space", ""))
+						
 						yearOfConstruction.append(yearBuilt)
+						parkingSpaces.append(parking)
+						print(yearBuilt, parking)
 						getDetails = False
 					else:
-						time.sleep(1)
+						time.sleep(0.3)
 
-df = pd.DataFrame({'Address': addresses, 'Price': prices, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction})
+df = pd.DataFrame({'Address': addresses, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction, 'Parking': parkingSpaces, 'Price': prices})
 df.to_csv('listings.csv', index=False, encoding='utf-8')
 print(df.size)
