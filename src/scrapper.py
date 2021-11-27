@@ -44,7 +44,8 @@ startTime = time.perf_counter()
 timeSinceLastHibernate = 0
 
 for neighborhood in listOfNeighborhoods:
-	for page in range (1,100) :
+	firstPage = ""; duplicatePages = 0
+	for page in range (1,100):
 		if timeSinceLastHibernate == 180:
 			print("hibernating")
 			time.sleep(120)
@@ -59,6 +60,15 @@ for neighborhood in listOfNeighborhoods:
 		print(url)
 		html = requests.get(url=url, headers=header)
 		if html.status_code != 200:
+			break
+
+		if page == 1:
+			firstPage = html.content
+		elif html.content == firstPage and duplicatePages < 1:
+			print("Caught duplicate page, ignoring\nIf next page is also duplicate, go to next borough")
+			duplicatePages += 1
+			continue
+		else:
 			break
 
 		bsobj = soup(html.content, 'html.parser')
