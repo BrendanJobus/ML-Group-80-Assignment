@@ -53,10 +53,10 @@ def sleepSchedule(startTime, timeSinceLastHibernate):
 		startTime = time.perf_counter()
 		timeSinceLastHibernate += 20
 
-def extractDataFromHTML(htmlDoc):
-	for listing in htmlDoc.findAll('div', {'class': 'list-card-info'}):
+def extractDataFromHtml(htmlDoc, dataFromPage):
+	for listing in htmlDoc.findAll('article', {'role': 'presentation'}):
 		for listingPage in listing.find_all('a', href=True):
-			print("Found the URL:", listingPage['href'])
+			print(f"Found URL: {listingPage['href']}")
 			gotSummary, gotDetails = False, False
 			while(not gotSummary or not gotDetails):
 				listingHtml = requests.get(url=listingPage['href'], headers=header)
@@ -73,6 +73,8 @@ def extractDataFromHTML(htmlDoc):
 					deets = listingHtmlDoc.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
 					parseAndCleanDetails(deets)
 					gotDetails = True
+			dataFromPage += 1
+	return dataFromPage
 
 def writeData():
 	df = pd.DataFrame({'Address': addresses, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction, 'Parking': parkingSpaces, 'Price': prices})
@@ -100,7 +102,8 @@ for neighborhood in listOfNeighborhoods:
 			break
 
 		htmlDoc = soup(html.content, 'html.parser')
-		extractDataFromHTML(htmlDoc)
+		dataPerPage = extractDataFromHtml(htmlDoc, 0)
+		print(dataPerPage)
 
 writeData()
 
