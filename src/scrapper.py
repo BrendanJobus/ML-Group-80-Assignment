@@ -82,7 +82,7 @@ def extractDataFromHtml(htmlDoc, page, duplicateChecks, dataFromPage):
 
 def writeData():
 	df = pd.DataFrame({'Address': addresses, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction, 'Parking': parkingSpaces, 'Price': prices})
-	df.to_csv('listings.csv', index=False, encoding='utf-8')
+	df.to_csv('data/listings.csv', index=False, encoding='utf-8')
 	print(df.size)
 
 def interceptor(request):
