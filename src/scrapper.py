@@ -25,7 +25,6 @@ def parseAndCleanData(data, address):
 	else:
 		area = int(area.replace(",", ""))
 	prices.append(price); beds.append(bed); baths.append(bath); areas.append(area); addresses.append(address)
-	print(price, bed, bath, area, address)
 
 def parseAndCleanDetails(details):
 	yearBuilt, parkingSpots = 0, 0
@@ -41,7 +40,6 @@ def parseAndCleanDetails(details):
 			parkingSpots = int(parkingSpots.replace("Parking spaces", ""))
 	yearOfConstruction.append(yearBuilt)
 	parkingSpaces.append(parkingSpots)
-	print(yearBuilt, parkingSpots)
 
 def sleepSchedule(startTime, timeSinceLastHibernate):
 	if timeSinceLastHibernate == 180:
@@ -108,8 +106,6 @@ def interceptor(request):
 	del request.headers['Referer']
 	request.headers['Referer'] = 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 
-driver = webdriver.Chrome("utils/chromeDriverLinux")
-
 prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
@@ -124,6 +120,7 @@ timeSinceLastHibernate = 0
 for neighborhood in listOfNeighborhoods:
 	duplicateChecks = []
 	for page in range (1,100):
+		driver = webdriver.Chrome("utils/chromeDriverLinux")
 		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
 
 		driver.request_interceptor = interceptor
@@ -136,5 +133,6 @@ for neighborhood in listOfNeighborhoods:
 		goToNextBorough = extractDataFromHtml(htmlDoc, duplicateChecks)
 		if goToNextBorough:
 			break
+		driver.close()
 
 writeData()
