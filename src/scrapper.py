@@ -108,7 +108,7 @@ def interceptor(request):
 	del request.headers['Referer']
 	request.headers['Referer'] = 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 
-driver = webdriver.Chrome()
+driver = webdriver.Chrome("utils/chromeDriverLinux")
 
 prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
 
@@ -138,5 +138,3 @@ for neighborhood in listOfNeighborhoods:
 			break
 
 writeData()
-
-# TODO: fix current issue of getting duplicate data, current idea, check to see if the first 5 datapoints of every page are the same as the first page
