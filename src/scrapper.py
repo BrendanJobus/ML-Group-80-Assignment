@@ -54,12 +54,31 @@ def sleepSchedule(startTime, timeSinceLastHibernate):
 		startTime = time.perf_counter()
 		timeSinceLastHibernate += 20
 
-def checkForDuplicates():
-	pass
+def checkForDuplicates(address):
+	if address in duplicateChecks: 
+		return True
+	else: 
+		return False
 
-def extractDataFromHtml(htmlDoc, page, duplicateChecks, dataFromPage):
+def extractDataFromHtml(htmlDoc, duplicateChecks):
+	addToDuplicateChecks = False
+	duplicates = 0
+	if not duplicateChecks:
+		print("first page")
+		addToDuplicateChecks = True
+
 	for listing in htmlDoc.findAll('a', {'class': 'list-card-link list-card-link-top-margin list-card-img'}, href=True):
 		print(f"Found URL: {listing['href']}")
+		if addToDuplicateChecks:
+			duplicateChecks.append(listing['href'])
+		elif checkForDuplicates(listing['href']):
+			duplicates += 1
+			print("Link is a duplicate")
+			if duplicates >= 5:
+				print("Too many duplicates found, going to next borough")
+				return True
+			else:
+				continue
 		gotSummary, gotDetails = False, False
 		while(not gotSummary or not gotDetails):
 			listingHtml = requests.get(url=listing['href'], headers=header)
@@ -76,9 +95,7 @@ def extractDataFromHtml(htmlDoc, page, duplicateChecks, dataFromPage):
 				deets = listingHtmlDoc.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
 				parseAndCleanDetails(deets)
 				gotDetails = True
-		dataFromPage += 1
-
-	return dataFromPage
+	return False
 
 def writeData():
 	df = pd.DataFrame({'Address': addresses, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction, 'Parking': parkingSpaces, 'Price': prices})
@@ -116,8 +133,9 @@ for neighborhood in listOfNeighborhoods:
 		time.sleep(5)
 		html = driver.page_source
 		htmlDoc = soup(html, 'html.parser')
-		dataPerPage = extractDataFromHtml(htmlDoc, page, duplicateChecks, 0)
-		print(dataPerPage)
+		goToNextBorough = extractDataFromHtml(htmlDoc, duplicateChecks)
+		if goToNextBorough:
+			break
 
 writeData()
 
