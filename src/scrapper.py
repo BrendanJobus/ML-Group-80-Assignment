@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as soup
 import pandas as pd
-import requests 
+import requests
+from seleniumwire import webdriver
 import time
 
 def parseAndCleanData(data, address):
@@ -53,27 +54,30 @@ def sleepSchedule(startTime, timeSinceLastHibernate):
 		startTime = time.perf_counter()
 		timeSinceLastHibernate += 20
 
-def extractDataFromHtml(htmlDoc, dataFromPage):
-	for listing in htmlDoc.findAll('article', {'role': 'presentation'}):
-		for listingPage in listing.find_all('a', href=True):
-			print(f"Found URL: {listingPage['href']}")
-			gotSummary, gotDetails = False, False
-			while(not gotSummary or not gotDetails):
-				listingHtml = requests.get(url=listingPage['href'], headers=header)
-				if listingHtml.status_code != 200:
-					break
+def checkForDuplicates():
+	pass
 
-				listingHtmlDoc = soup(listingHtml.content, 'html.parser')
-				if listingHtmlDoc.find('div', {'class': 'ds-summary-row-container'}) and not gotSummary:
-					data = listingHtmlDoc.find('div', {'class': 'ds-summary-row-container'}).get_text()
-					address = listingHtmlDoc.find('h1', {'id': 'ds-chip-property-address'}).get_text()
-					gotSummary = True
-					parseAndCleanData(data, address)
-				if listingHtmlDoc.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and not gotDetails:
-					deets = listingHtmlDoc.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
-					parseAndCleanDetails(deets)
-					gotDetails = True
-			dataFromPage += 1
+def extractDataFromHtml(htmlDoc, page, duplicateChecks, dataFromPage):
+	for listing in htmlDoc.findAll('a', {'class': 'list-card-link list-card-link-top-margin list-card-img'}, href=True):
+		print(f"Found URL: {listing['href']}")
+		gotSummary, gotDetails = False, False
+		while(not gotSummary or not gotDetails):
+			listingHtml = requests.get(url=listing['href'], headers=header)
+			if listingHtml.status_code != 200:
+				break
+
+			listingHtmlDoc = soup(listingHtml.content, 'html.parser')
+			if listingHtmlDoc.find('div', {'class': 'ds-summary-row-container'}) and not gotSummary:
+				data = listingHtmlDoc.find('div', {'class': 'ds-summary-row-container'}).get_text()
+				address = listingHtmlDoc.find('h1', {'id': 'ds-chip-property-address'}).get_text()
+				gotSummary = True
+				parseAndCleanData(data, address)
+			if listingHtmlDoc.find('ul', {'class': 'hdp__sc-1m6tl3b-0 gpsjXQ'}) and not gotDetails:
+				deets = listingHtmlDoc.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
+				parseAndCleanDetails(deets)
+				gotDetails = True
+		dataFromPage += 1
+
 	return dataFromPage
 
 def writeData():
@@ -81,11 +85,19 @@ def writeData():
 	df.to_csv('listings.csv', index=False, encoding='utf-8')
 	print(df.size)
 
+def interceptor(request):
+	del request.headers['user-agent']
+	request.headers['user-agent'] = 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0'
+	del request.headers['Referer']
+	request.headers['Referer'] = 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
+
+driver = webdriver.Chrome()
+
 prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
 
-header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 }
 
@@ -93,16 +105,18 @@ startTime = time.perf_counter()
 timeSinceLastHibernate = 0
 
 for neighborhood in listOfNeighborhoods:
+	duplicateChecks = []
 	for page in range (1,100):
-		sleepSchedule(startTime, timeSinceLastHibernate)
 		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
-		print(url)
-		html = requests.get(url=url, headers=header)
-		if html.status_code != 200:
-			break
 
-		htmlDoc = soup(html.content, 'html.parser')
-		dataPerPage = extractDataFromHtml(htmlDoc, 0)
+		driver.request_interceptor = interceptor
+		driver.get(url)
+		time.sleep(1)
+		driver.execute_script("window.scrollTo({top: document.body.scrollHeight, left: 0, behavior: 'smooth'});")
+		time.sleep(5)
+		html = driver.page_source
+		htmlDoc = soup(html, 'html.parser')
+		dataPerPage = extractDataFromHtml(htmlDoc, page, duplicateChecks, 0)
 		print(dataPerPage)
 
 writeData()
