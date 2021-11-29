@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup as soup
+import math
 import pandas as pd
 import requests
 from seleniumwire import webdriver
@@ -58,7 +59,7 @@ def checkForDuplicates(address):
 	else: 
 		return False
 
-def extractDataFromHtml(htmlDoc, duplicateChecks):
+def extractDataFromHtml(htmlDoc, duplicateChecks, currentNumOfListings, maxListings):
 	addToDuplicateChecks = False
 	duplicates = 0
 	if not duplicateChecks:
@@ -66,6 +67,8 @@ def extractDataFromHtml(htmlDoc, duplicateChecks):
 		addToDuplicateChecks = True
 
 	for listing in htmlDoc.findAll('a', {'class': 'list-card-link list-card-link-top-margin list-card-img'}, href=True):
+		if currentNumOfListings >= maxListings:
+			return True
 		print(f"Found URL: {listing['href']}")
 		if addToDuplicateChecks:
 			duplicateChecks.append(listing['href'])
@@ -93,12 +96,17 @@ def extractDataFromHtml(htmlDoc, duplicateChecks):
 				deets = listingHtmlDoc.findAll('span', {'class': 'Text-c11n-8-53-2__sc-aiai24-0 hdp__sc-1esuh59-3 cvftlt hjZqSR'})
 				parseAndCleanDetails(deets)
 				gotDetails = True
+			currentNumOfListings += 1
 	return False
 
 def writeData():
 	df = pd.DataFrame({'Address': addresses, 'Beds': beds, 'Baths': baths, 'Area': areas, 'Construction': yearOfConstruction, 'Parking': parkingSpaces, 'Price': prices})
-	df.to_csv('data/listings.csv', index=False, encoding='utf-8')
+	df.to_csv('data/listings.csv', mode='a', header=False, index=False, encoding='utf-8')
 	print(df.size)
+
+def createCSV():
+	df = pd.DataFrame({'Address', 'Beds', 'Baths', 'Area', 'Construction', 'Parking', 'Price'})
+	df.to_csv('data/listing.csv', index=False, encoding='utf-8')
 
 def interceptor(request):
 	del request.headers['user-agent']
@@ -106,40 +114,72 @@ def interceptor(request):
 	del request.headers['Referer']
 	request.headers['Referer'] = 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 
-prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
+# Go through all of the webpages and get the number of listings per page, and then work out how many pages each price range should get in relation to the max
+def getMaxListingsPerPriceRange():
+	mostListings = 0
+	for neighbourhood, info in neighbourhoodInfo.items():
+		for priceRange in info[0]:
+			lowerPrice, upperPrice = str(priceRange[0]), str(priceRange[1])
+			# Get the number of listings for each price range and find the max of these
+			url = 'https://www.zillow.com/' + neighbourhood + '-new-york-ny/sold/?searchQueryState=' + info[1] + lowerPrice + info[2] + upperPrice + info[3]
+			res = requests.get(url=url, headers=header)
+			htmlDoc = soup(res.content, 'html.parser')
+			count = int(htmlDoc.find('span', {'class': 'result-count'}).get_text().replace("results", "").replace(",", "").strip())
+			if count > mostListings:
+				mostListings = count
+			priceRange.append(count)
 
-listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
-searchQueryExtension = {'Manhattan': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Manhattan%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.040174%2C"east"%3A-73.906999%2C"south"%3A40.680598%2C"north"%3A40.879278}%2C"regionSelection"%3A[{"regionId"%3A12530%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A993}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
+	for _, info in neighbourhoodInfo.items():
+		for data in info[0]:
+			maxListings = data[2]
+			ratioToSixHundred = maxListings / mostListings
+			maxListings = 600 * ratioToSixHundred
+			data[2] = math.ceil(maxListings)
+	
+neighbourhoodInfo = {'Manhattan': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Manhattan%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.040174%2C"east"%3A-73.906999%2C"south"%3A40.680598%2C"north"%3A40.879278}%2C"regionSelection"%3A[{"regionId"%3A12530%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A993}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
 						'Brooklyn': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Brooklyn%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.041603%2C"east"%3A-73.833646%2C"south"%3A40.570841%2C"north"%3A40.739446}%2C"regionSelection"%3A[{"regionId"%3A37607%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}%2C"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A662}}%2C"isListVisible"%3Atrue}'],
 						'Bronx': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Bronx%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-73.933405%2C"east"%3A-73.765273%2C"south"%3A40.785743%2C"north"%3A40.915266}%2C"regionSelection"%3A[{"regionId"%3A17182%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A662}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
 						'Staten-Island': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Staten Island%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.255586%2C"east"%3A-74.052267%2C"south"%3A40.496432%2C"north"%3A40.648857}%2C"regionSelection"%3A[{"regionId"%3A27252%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A993}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
 						'Queens': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Queens%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-73.962445%2C"east"%3A-73.700271%2C"south"%3A40.541745%2C"north"%3A40.800709}%2C"regionSelection"%3A[{"regionId"%3A270915%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A662}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}']
 					}
-
-priceRanges = [[100000, 200000], [200000, 300000], [300000, 400000], [400000, 500000], [500000, 600000], [600000, 700000], [700000, 800000], [800000, 900000], [900000, 1000000]]
+for _, borough in neighbourhoodInfo.items():
+	priceRange = [[x, x + 100000] for x in range(10000, 1000000) if x % 100000 == 0]
+	borough.insert(0, priceRange)
 
 header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 }
 
-for neighborhood in listOfNeighborhoods:
-	duplicateChecks = []
-	for page in range (1,100):
-		driver = webdriver.Chrome()
-		if page > 1:
-			url = 'https://www.zillow.com/' + neighborhood + '-new-york-ny/sold/' + str(page) + '_p/?searchQueryState=' +  searchQueryExtension.get(neighborhood)[0] + str(100000) + searchQueryExtension.get(neighborhood)[1] + str(500000) + searchQueryExtension.get(neighborhood)[2]
-		else:
-			url = 'https://www.zillow.com/' + neighborhood + '-new-york-ny/sold/?searchQueryState=' + searchQueryExtension.get(neighborhood)[0] + str(100000) + searchQueryExtension.get(neighborhood)[1] + str(500000) + searchQueryExtension.get(neighborhood)[2]
-		driver.request_interceptor = interceptor
-		driver.get(url)
-		time.sleep(1)
-		driver.execute_script("window.scrollTo({top: document.body.scrollHeight, left: 0, behavior: 'smooth'});")
-		time.sleep(5)
-		html = driver.page_source
-		htmlDoc = soup(html, 'html.parser')
-		goToNextBorough = extractDataFromHtml(htmlDoc, duplicateChecks)
-		if goToNextBorough:
-			break
-		driver.close()
+getMaxListingsPerPriceRange()
+createCSV()
 
-writeData()
+for neighbourhood, info in neighbourhoodInfo.items():
+	for priceRange in info[0]:
+		prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
+		lowerPrice, upperPrice, maxListingsForCurrentRange = str(priceRange[0]), str(priceRange[1]), priceRange[2]
+		listingsFromCurrentRange = 0
+		duplicateChecks = []
+		for page in range (1,20):
+			driver = webdriver.Chrome()
+			if page > 1:
+				url = 'https://www.zillow.com/' + neighbourhood + '-new-york-ny/sold/' + str(page) + '_p/?searchQueryState=' +  info[1] + lowerPrice + info[2] + upperPrice + info[3]
+			else:
+				url = 'https://www.zillow.com/' + neighbourhood + '-new-york-ny/sold/?searchQueryState=' + info[1] + lowerPrice + info[2] + upperPrice + info[3]
+			driver.request_interceptor = interceptor
+			driver.get(url)
+			time.sleep(1)
+			driver.execute_script("window.scrollTo({top: document.body.scrollHeight, left: 0, behavior: 'smooth'});")
+			time.sleep(5)
+			html = driver.page_source
+			htmlDoc = soup(html, 'html.parser')
+			goToNextRange = extractDataFromHtml(htmlDoc, duplicateChecks, listingsFromCurrentRange, maxListingsForCurrentRange)
+			listingsFromCurrentRange = len(prices)
+			if goToNextRange:
+				print(f"Datapoints from this range: {listingsFromCurrentRange} out of {maxListingsForCurrentRange}")
+				break
+			driver.close()
+		# write here to save data
+		writeData()
+
+#writeData()
+# TODO: setup price ranging and then save per page
