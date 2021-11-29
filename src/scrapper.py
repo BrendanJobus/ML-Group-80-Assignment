@@ -105,7 +105,7 @@ def writeData():
 	print(df.size)
 
 def createCSV():
-	df = pd.DataFrame({'Address', 'Beds', 'Baths', 'Area', 'Construction', 'Parking', 'Price'})
+	df = pd.DataFrame({'Address': [], 'Beds': [], 'Baths': [], 'Area': [], 'Construction': [], 'Parking': [], 'Price': []})
 	df.to_csv('data/listing.csv', index=False, encoding='utf-8')
 
 def interceptor(request):
@@ -135,7 +135,7 @@ def getMaxListingsPerPriceRange():
 			ratioToSixHundred = maxListings / mostListings
 			maxListings = 600 * ratioToSixHundred
 			data[2] = math.ceil(maxListings)
-	
+
 neighbourhoodInfo = {'Manhattan': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Manhattan%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.040174%2C"east"%3A-73.906999%2C"south"%3A40.680598%2C"north"%3A40.879278}%2C"regionSelection"%3A[{"regionId"%3A12530%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A993}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
 						'Brooklyn': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Brooklyn%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.041603%2C"east"%3A-73.833646%2C"south"%3A40.570841%2C"north"%3A40.739446}%2C"regionSelection"%3A[{"regionId"%3A37607%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}%2C"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A662}}%2C"isListVisible"%3Atrue}'],
 						'Bronx': ['{"pagination"%3A{}%2C"usersSearchTerm"%3A"Bronx%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-73.933405%2C"east"%3A-73.765273%2C"south"%3A40.785743%2C"north"%3A40.915266}%2C"regionSelection"%3A[{"regionId"%3A17182%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"price"%3A{"min"%3A', '%2C"max"%3A', '}%2C"mp"%3A{"min"%3A331%2C"max"%3A662}%2C"sort"%3A{"value"%3A"globalrelevanceex"}%2C"fsba"%3A{"value"%3Afalse}%2C"fsbo"%3A{"value"%3Afalse}%2C"nc"%3A{"value"%3Afalse}%2C"fore"%3A{"value"%3Afalse}%2C"cmsn"%3A{"value"%3Afalse}%2C"auc"%3A{"value"%3Afalse}%2C"rs"%3A{"value"%3Atrue}%2C"ah"%3A{"value"%3Atrue}}%2C"isListVisible"%3Atrue}'],
