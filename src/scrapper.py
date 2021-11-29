@@ -109,6 +109,9 @@ def interceptor(request):
 prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
+searchQueryExtension = {'Manhattan': ['{"usersSearchTerm"%3A"Manhattan%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.040174%2C"east"%3A-73.906999%2C"south"%3A40.680598%2C"north"%3A40.879278}%2C"regionSelection"%3A[{"regionId"%3A12530%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"sort"%3A{"value"%3A"globalrelevanceex"}%2C"ah"%3A{"value"%3Atrue}%2C"price"%3A{"max"%3A', '%2C"min"%3A', '}%2C"mp"%3A{"max"%3A1656%2C"min"%3A331}}%2C"isListVisible"%3Atrue%2C"category"%3A"cat2"%2C"pagination"%3A{}}'],
+}
+
 
 header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
@@ -118,8 +121,10 @@ for neighborhood in listOfNeighborhoods:
 	duplicateChecks = []
 	for page in range (1,100):
 		driver = webdriver.Chrome()
-		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
-
+		if page > 1:
+			url = 'https://www.zillow.com/' + neighborhood + '-new-york-ny/' + str(page) + '_p/?searchQueryState=' +  searchQueryExtension.get(neighborhood)[0] + str(500000) + searchQueryExtension.get(neighborhood)[1] + str(100000) + searchQueryExtension.get(neighborhood)[2]
+		else:
+			url = 'https://www.zillow.com/' + neighborhood + '-new-york-ny/?searchQueryState=' + searchQueryExtension.get(neighborhood)[0] + str(500000) + searchQueryExtension.get(neighborhood)[1] + str(100000) + searchQueryExtension.get(neighborhood)[2]
 		driver.request_interceptor = interceptor
 		driver.get(url)
 		time.sleep(1)
