@@ -109,9 +109,8 @@ def interceptor(request):
 prices, beds, baths, addresses, areas, yearOfConstruction, parkingSpaces = [], [], [], [], [], [], []
 
 listOfNeighborhoods = ['Manhattan', 'Brooklyn', 'Bronx', 'Staten-Island', 'Queens']
-searchQueryExtension = {'Manhattan': ['{"usersSearchTerm"%3A"Manhattan%2C New York%2C NY"%2C"mapBounds"%3A{"west"%3A-74.040174%2C"east"%3A-73.906999%2C"south"%3A40.680598%2C"north"%3A40.879278}%2C"regionSelection"%3A[{"regionId"%3A12530%2C"regionType"%3A17}]%2C"isMapVisible"%3Afalse%2C"filterState"%3A{"sort"%3A{"value"%3A"globalrelevanceex"}%2C"ah"%3A{"value"%3Atrue}%2C"price"%3A{"max"%3A', '%2C"min"%3A', '}%2C"mp"%3A{"max"%3A1656%2C"min"%3A331}}%2C"isListVisible"%3Atrue%2C"category"%3A"cat2"%2C"pagination"%3A{}}'],
+searchQueryExtension = {'Manhattan': ['%7B%22usersSearchTerm%22%3A%22Manhattan%2C%20New%20York%2C%20NY%22%2C%22mapBounds%22%3A%7B%22west%22%3A-74.040174%2C%22east%22%3A-73.906999%2C%22south%22%3A40.680598%2C%22north%22%3A40.879278%7D%2C%22regionSelection%22%3A%5B%7B%22regionId%22%3A12530%2C%22regionType%22%3A17%7D%5D%2C%22isMapVisible%22%3Afalse%2C%22filterState%22%3A%7B%22sort%22%3A%7B%22value%22%3A%22globalrelevanceex%22%7D%2C%22ah%22%3A%7B%22value%22%3Atrue%7D%2C%22price%22%3A%7B%22max%22%3A', '%2C%22min%22%3A', '%7D%2C%22mp%22%3A%7B%22max%22%3A1656%2C%22min%22%3A331%7D%7D%2C%22isListVisible%22%3Atrue%2C%22category%22%3A%22cat1%22%7D'],
 }
-
 
 header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
