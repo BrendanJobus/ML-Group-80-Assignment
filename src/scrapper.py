@@ -114,13 +114,10 @@ header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 }
 
-startTime = time.perf_counter()
-timeSinceLastHibernate = 0
-
 for neighborhood in listOfNeighborhoods:
 	duplicateChecks = []
 	for page in range (1,100):
-		driver = webdriver.Chrome("utils/chromeDriverLinux")
+		driver = webdriver.Chrome()
 		url = f'https://www.zillow.com/{neighborhood}-new-york-ny/{page}_p/'
 
 		driver.request_interceptor = interceptor
