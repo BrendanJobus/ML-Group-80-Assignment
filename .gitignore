@@ -1,1 +1,4 @@
+data/neighbourhoodInfo.pkl
 src/__pycache__
+tmp/
+utils/
