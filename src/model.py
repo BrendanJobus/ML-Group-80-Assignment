@@ -1,7 +1,17 @@
 import numpy as np
 import pandas as pd
-
+import math
 import matplotlib.pyplot as plt
+import seaborn as sns; sns.set()
+from sklearn.cluster import KMeans
+from sklearn.dummy import DummyRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import KFold, train_test_split
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from xgboost import XGBRegressor
+
 def minMax(x):
     return pd.Series(index=['min','max'],data=[x.min(),x.max()]).T.values.tolist()
 
@@ -17,11 +27,6 @@ def normalize(df):
         norm[i] = (norm[i] - min) / gap
     return norm
 
-#Cross validation for choosing polynomial features
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.metrics import mean_squared_error
-
 def kfold_calculation(X, y, k, model):
     kf = KFold(n_splits=k)
     scores=[]
@@ -36,7 +41,6 @@ def kfold_polynomials(X, y, k):
     q_range = range(1,11)
     for q in q_range:
         Xpoly = PolynomialFeatures(q).fit_transform(X)
-        from sklearn.linear_model import LinearRegression
         model = LinearRegression()
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -53,7 +57,6 @@ def kfold_Lasso(X, y, k, poly):
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
     c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
     for c in c_range:
-        from sklearn.linear_model import Lasso
         model = Lasso(alpha=c)
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -70,7 +73,6 @@ def kfold_Ridge(X, y, k, poly):
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
     c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
     for c in c_range:
-        from sklearn.linear_model import Ridge
         model = Ridge(alpha=1/(2*c))
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -87,7 +89,6 @@ def kfold_XGBRegressor(X, y, k, poly):
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
     c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
     for c in c_range:
-        from xgboost import XGBRegressor
         model = XGBRegressor(alpha=c)
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -104,7 +105,6 @@ def kfold_RandomForestRegressor(X, y, k, poly):
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
     n_range = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     for n in n_range:
-        from sklearn.ensemble import RandomForestRegressor
         model = RandomForestRegressor(n_estimators=n)
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -121,7 +121,6 @@ def kfold_GradientBoostingRegressor(X, y, k, poly):
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
     c_range = [0.0001, 0.005, 0.01, 0.05, 0.1, 0.5]
     for c in c_range:
-        from sklearn.ensemble import GradientBoostingRegressor
         model = GradientBoostingRegressor(alpha=c)
         scores = kfold_calculation(Xpoly, y, k, model)
         mean_error.append(np.array(scores).mean())
@@ -132,8 +131,53 @@ def kfold_GradientBoostingRegressor(X, y, k, poly):
     plt.ylabel('Mean square error')
     plt.show()
 
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
+def clusterModel(coords):
+    print(coords)
+    coordsWOid = coords[['Latitude', 'Longitude']]
+    print(coordsWOid)
+    SSE_mean = []; SSE_std = []
+    K = range(5, 50, 5)
+    for k in K:
+        kmeans = KMeans(init='k-means++', n_clusters=k)
+        kf = KFold(n_splits=5)
+        m=0; v=0
+        for train, test in kf.split(coordsWOid):
+            kmeans.fit(train.reshape(-1, 1))
+            cost = -kmeans.score(test.reshape(-1, 1))
+            m=m+cost; v=v+cost*cost
+        SSE_mean.append(m/5); SSE_std.append(math.sqrt(v/5-(m/5)*(m/5)))
+    plt.errorbar(K, SSE_mean, yerr=SSE_std, xerr=None, fmt='bx-')
+    plt.ylabel('cost'); plt.xlabel('number of clusters'); plt.show()
+
+
+    kmeans = KMeans(n_clusters = 15, init = 'k-means++')
+    kmeans.fit(coords[coords.columns[0:2]])
+    coords['cluster_label'] = kmeans.fit_predict(coords[coords.columns[0:2]])
+    centers = kmeans.cluster_centers_
+    labels = kmeans.predict(coords[coords.columns[0:2]])
+
+    coords.plot.scatter(x = 'Latitude', y='Longitude', c=labels, s=50, cmap='viridis')
+    plt.scatter(centers[:, 0], centers[:, 1], c='black', s = 200, alpha=0.5)
+    plt.show()
+
+df = pd.read_csv("data/houseListings.csv")
+labels = df['Price']
+features = df.drop(['Price'], axis=1)
+# add id
+ids = pd.Series([x for x in range(0, len(features.index))])
+features['id'] = ids.values
+
+coords = features.loc[:,['Latitude', 'Longitude', 'id']]
+clusterModel(coords)
+coords = coords.drop(['Latitude', 'Longitude'], axis=1)
+print(features)
+features = features.merge(coords, how='inner', on='id')
+features = features.drop(['id'], axis=1)
+
+features.to_csv('data/clusteredData.csv', index=None)
+
+features = features.drop(['id'], axis=1)
+print(features)
 
 data = pd.read_csv("../data/geocodedListings2.csv")
 # According to the small data set, testing with removing those cols with most 0
@@ -158,14 +202,11 @@ kfold_RandomForestRegressor(train, labels, 5, 7)
 
 kfold_GradientBoostingRegressor(train, labels, 5, 7)
 
-from sklearn.dummy import DummyRegressor
 dummy = DummyRegressor(strategy='mean').fit(train, labels)
 ydummy = dummy.predict(train)
 print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(labels, ydummy))))
 
 x_train , x_test , y_train , y_test = train_test_split(train , labels , test_size = 0.2 ,random_state =2)
-
-from xgboost import XGBRegressor
 
 # Create a XGBoost Regressor
 print('\nRunning XGBoost Regression:')
@@ -181,8 +222,6 @@ rsquared_score = r2_score(y_test, y_pred)
 print('RMSE score:', rmse_score)
 print('R2 score:', rsquared_score)
 
-from sklearn.ensemble import RandomForestRegressor
-
 # Create a Random Forest Regressor
 print('\nRunning Random Forest Regression:')
 model = RandomForestRegressor()
@@ -197,8 +236,6 @@ rsquared_score = r2_score(y_test, y_pred)
 print('RMSE score:', rmse_score)
 print('R2 score:', rsquared_score)
 
-from sklearn.ensemble import GradientBoostingRegressor
-
 # Create a Gradient Gradient Regressor
 print('\nRunning Gradient Boosting Regression:')
 model = GradientBoostingRegressor()
@@ -212,7 +249,3 @@ rmse_score = np.sqrt(mean_squared_error(y_test, y_pred))
 rsquared_score = r2_score(y_test, y_pred)
 print('RMSE score:', rmse_score)
 print('R2 score:', rsquared_score)
-
-
-
-
