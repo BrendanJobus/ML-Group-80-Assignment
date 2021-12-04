@@ -163,37 +163,18 @@ def clusterModel(features):
     plt.scatter(centers[:, 0], centers[:, 1], c='black', s = 200, alpha=0.5)
     plt.show()
 
-<<<<<<< HEAD
     coords = coords.drop(['Latitude', 'Longitude'], axis=1)
     features = features.merge(coords, how='inner', on='id')
     features = features.drop(['id'], axis=1)
     features.to_csv('data/clusteredData.csv', index=None)
-=======
-df = pd.read_csv("data/houseListings.csv")
-df = normalize(df)
-labels = df['Price']
-features = df.drop(['Price'], axis=1)
-# add id
-ids = pd.Series([x for x in range(0, len(features.index))])
-features['id'] = ids.values
->>>>>>> 46a729c92138fa72c67d6ca5c65a5712f3409789
 
     features = features.drop(['id'], axis=1)
     return features
 
-<<<<<<< HEAD
 df = pd.read_csv("data/houseListings.csv")
 target = df['Price']
 features = df.drop(['Price'], axis=1)
 features = clusterModel(features)
-=======
-features = pd.concat([features, pd.get_dummies(features['cluster_label'], prefix='cluster')], axis=1)
-features = features.drop(['cluster_label'], axis=1)
-print(features)
->>>>>>> 46a729c92138fa72c67d6ca5c65a5712f3409789
-
-""" #features.to_csv('data/clusteredData.csv', index=None)
-
 
 data = pd.read_csv("data/houseListings.csv")
 # According to the small data set, testing with removing those cols with most 0
@@ -204,7 +185,7 @@ data.sort_values('Price',ascending=False)
 data_norm = normalize(data)
 
 labels = data_norm['Price']
-train = data_norm.drop(['Price'],axis=1) """
+train = data_norm.drop(['Price'],axis=1)
 train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
 
 print(train)
