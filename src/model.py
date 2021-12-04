@@ -180,6 +180,9 @@ data = normalize(df)
 target = data['Price']
 features = data.drop(['Price'], axis=1)
 features = clusterModel(features)
+#One-hot encoding for cluster numbers
+features = pd.concat([features, pd.get_dummies(features['cluster_label'], prefix='cluster')], axis=1)
+features = features.drop(['cluster_label'], axis=1)
 
 # data = pd.read_csv("data/houseListings.csv")
 # # According to the small data set, testing with removing those cols with most 0
