@@ -131,27 +131,29 @@ def kfold_GradientBoostingRegressor(X, y, k, poly):
     plt.ylabel('Mean square error')
     plt.show()
 
-def clusterModel(features):
-    # Setting up the dataset to cluster the latitude and longitude
-    ids = pd.Series([x for x in range(0, len(features.index))])
-    features['id'] = ids.values
-    coords = features.loc[:,['Latitude', 'Longitude', 'id']]
-    clusterModel(coords)
-    coordsWOid = coords[['Latitude', 'Longitude']]
-
+# Going to use this to find the best 
+def findBestK(coords):
     SSE_mean = []; SSE_std = []
     K = range(5, 50, 5)
     for k in K:
         kmeans = KMeans(init='k-means++', n_clusters=k)
         kf = KFold(n_splits=5)
         m=0; v=0
-        for train, test in kf.split(coordsWOid):
+        for train, test in kf.split(coords):
             kmeans.fit(train.reshape(-1, 1))
             cost = -kmeans.score(test.reshape(-1, 1))
             m=m+cost; v=v+cost*cost
         SSE_mean.append(m/5); SSE_std.append(math.sqrt(v/5-(m/5)*(m/5)))
     plt.errorbar(K, SSE_mean, yerr=SSE_std, xerr=None, fmt='bx-')
     plt.ylabel('cost'); plt.xlabel('number of clusters'); plt.show()
+
+def clusterModel(features):
+    # Setting up the dataset to cluster the latitude and longitude
+    ids = pd.Series([x for x in range(0, len(features.index))])
+    features['id'] = ids.values
+    coords = features.loc[:,['Latitude', 'Longitude', 'id']]
+
+    findBestK(coords[['Latitude', 'Longitude']])
 
     kmeans = KMeans(n_clusters = 15, init = 'k-means++')
     kmeans.fit(coords[coords.columns[0:2]])
@@ -172,40 +174,43 @@ def clusterModel(features):
     return features
 
 df = pd.read_csv("data/houseListings.csv")
-target = df['Price']
-features = df.drop(['Price'], axis=1)
+df = df.drop(['Address', 'Construction', 'Parking'], axis=1)
+data = normalize(df)
+
+target = data['Price']
+features = data.drop(['Price'], axis=1)
 features = clusterModel(features)
 
-data = pd.read_csv("data/houseListings.csv")
-# According to the small data set, testing with removing those cols with most 0
-data = data.drop(['Address', 'Construction', 'Parking'],axis=1)
-# Sort data
-data.sort_values('Price',ascending=False)
-# Normalize data
-data_norm = normalize(data)
+# data = pd.read_csv("data/houseListings.csv")
+# # According to the small data set, testing with removing those cols with most 0
+# data = data.drop(['Address', 'Construction', 'Parking'],axis=1)
+# # Sort data
+# data.sort_values('Price',ascending=False)
+# # Normalize data
+# data_norm = normalize(data)
 
-labels = data_norm['Price']
-train = data_norm.drop(['Price'],axis=1)
-train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
+# labels = data_norm['Price']
+# train = data_norm.drop(['Price'],axis=1)
+# train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
 
-print(train)
+print(features)
 #kfold_polynomials(train, labels, 5)
 
-kfold_Lasso(train, labels, 5, 1)
+kfold_Lasso(features, target, 5, 1)
 
-kfold_Ridge(train, labels, 5, 1)
+kfold_Ridge(features, target, 5, 1)
 
-kfold_XGBRegressor(train, labels, 5, 1)
+kfold_XGBRegressor(features, target, 5, 1)
 
-kfold_RandomForestRegressor(train, labels, 5, 1)
+kfold_RandomForestRegressor(features, target, 5, 1)
 
-kfold_GradientBoostingRegressor(train, labels, 5, 1)
+kfold_GradientBoostingRegressor(features, target, 5, 1)
 
-dummy = DummyRegressor(strategy='mean').fit(train, labels)
-ydummy = dummy.predict(train)
-print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(labels, ydummy))))
+dummy = DummyRegressor(strategy='mean').fit(features, target)
+ydummy = dummy.predict(features)
+print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(target, ydummy))))
 
-x_train , x_test , y_train , y_test = train_test_split(train , labels , test_size = 0.2 ,random_state =2)
+x_train , x_test , y_train , y_test = train_test_split(features , target , test_size = 0.2 ,random_state =2)
 
 # Create a XGBoost Regressor
 print('\nRunning XGBoost Regression:')
