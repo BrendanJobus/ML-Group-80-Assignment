@@ -17,9 +17,8 @@ def minMax(x):
 
 def normalize(df):
     listOfMinMax = df.apply(minMax)
-    index = ['Beds','Baths','Area','Price','Latitude','Longitude']
+    index = ['Beds','Baths','Area','Price']
     norm = df.copy()
-    print(listOfMinMax)
     for i in index:
         min = listOfMinMax[i][0]
         max = listOfMinMax[i][1]
@@ -49,7 +48,7 @@ def kfold_polynomials(X, y, k):
     plt.errorbar(q_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('q')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 def kfold_Lasso(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -65,7 +64,7 @@ def kfold_Lasso(X, y, k, poly):
     plt.errorbar(c_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('c')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 def kfold_Ridge(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -81,7 +80,7 @@ def kfold_Ridge(X, y, k, poly):
     plt.errorbar(c_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('c')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 def kfold_XGBRegressor(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -97,7 +96,7 @@ def kfold_XGBRegressor(X, y, k, poly):
     plt.errorbar(c_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('c')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 def kfold_RandomForestRegressor(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -113,7 +112,7 @@ def kfold_RandomForestRegressor(X, y, k, poly):
     plt.errorbar(n_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('n')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 def kfold_GradientBoostingRegressor(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -129,57 +128,54 @@ def kfold_GradientBoostingRegressor(X, y, k, poly):
     plt.errorbar(c_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('c')
     plt.ylabel('Mean square error')
-    plt.show()
+    #plt.show()
 
 # Going to use this to find the best 
-def findBestK(coords):
-    SSE_mean = []; SSE_std = []
+def findBestK(coords, features, targets):
+    # This is the method discussed in class about finding the best k with regards to the cost function
     K = range(5, 50, 5)
     for k in K:
-        kmeans = KMeans(init='k-means++', n_clusters=k)
-        kf = KFold(n_splits=5)
-        m=0; v=0
-        for train, test in kf.split(coords):
-            kmeans.fit(train.reshape(-1, 1))
-            cost = -kmeans.score(test.reshape(-1, 1))
-            m=m+cost; v=v+cost*cost
-        SSE_mean.append(m/5); SSE_std.append(math.sqrt(v/5-(m/5)*(m/5)))
-    plt.errorbar(K, SSE_mean, yerr=SSE_std, xerr=None, fmt='bx-')
-    plt.ylabel('cost'); plt.xlabel('number of clusters'); plt.show()
+        expFeatures = features.copy()
+        expCoords = coords.copy()
 
-def clusterModel(features):
+        kmeans = KMeans(n_clusters=k, init="k-means++")
+        kmeans.fit(expCoords[expCoords.columns[0:2]])
+        expCoords['cluster_label'] = kmeans.fit_predict(expCoords[expCoords.columns[0:2]])
+        expCoords = expCoords.drop(['Latitude', 'Longitude'], axis=1)
+        expFeatures = expFeatures.merge(expCoords, how='inner', on='id')
+        expFeatures.drop(['id', 'Latitude', 'Longitude'], axis=1)
+        expFeatures = pd.concat([expFeatures, pd.get_dummies(expFeatures['cluster_label'], prefix='cluster')], axis=1)
+        expFeatures = expFeatures.drop(['cluster_label'], axis=1)
+
+def clusterModel(features, targets):
     # Setting up the dataset to cluster the latitude and longitude
     ids = pd.Series([x for x in range(0, len(features.index))])
     features['id'] = ids.values
     coords = features.loc[:,['Latitude', 'Longitude', 'id']]
-
-    findBestK(coords[['Latitude', 'Longitude']])
+    #findBestK(coords, features, targets)
 
     kmeans = KMeans(n_clusters = 15, init = 'k-means++')
     kmeans.fit(coords[coords.columns[0:2]])
     coords['cluster_label'] = kmeans.fit_predict(coords[coords.columns[0:2]])
     centers = kmeans.cluster_centers_
-    labels = kmeans.predict(coords[coords.columns[0:2]])
-
-    coords.plot.scatter(x = 'Latitude', y='Longitude', c=labels, s=50, cmap='viridis')
+    
+    coords.plot.scatter(x = 'Latitude', y='Longitude', c=coords['cluster_label'], s=50, cmap='viridis')
     plt.scatter(centers[:, 0], centers[:, 1], c='black', s = 200, alpha=0.5)
     plt.show()
 
     coords = coords.drop(['Latitude', 'Longitude'], axis=1)
     features = features.merge(coords, how='inner', on='id')
-    features = features.drop(['id'], axis=1)
+    features = features.drop(['id', 'Latitude', 'Longitude'], axis=1)
     features.to_csv('data/clusteredData.csv', index=None)
-
-    features = features.drop(['id'], axis=1)
     return features
 
 df = pd.read_csv("data/houseListings.csv")
 df = df.drop(['Address', 'Construction', 'Parking'], axis=1)
 data = normalize(df)
 
-target = data['Price']
+targets = data['Price']
 features = data.drop(['Price'], axis=1)
-features = clusterModel(features)
+features = clusterModel(features, targets)
 #One-hot encoding for cluster numbers
 features = pd.concat([features, pd.get_dummies(features['cluster_label'], prefix='cluster')], axis=1)
 features = features.drop(['cluster_label'], axis=1)
@@ -196,24 +192,24 @@ features = features.drop(['cluster_label'], axis=1)
 # train = data_norm.drop(['Price'],axis=1)
 # train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
 
-print(features)
+#print(features)
 #kfold_polynomials(train, labels, 5)
 
-kfold_Lasso(features, target, 5, 1)
+kfold_Lasso(features, targets, 5, 1)
 
-kfold_Ridge(features, target, 5, 1)
+kfold_Ridge(features, targets, 5, 1)
 
-kfold_XGBRegressor(features, target, 5, 1)
+kfold_XGBRegressor(features, targets, 5, 1)
 
-kfold_RandomForestRegressor(features, target, 5, 1)
+kfold_RandomForestRegressor(features, targets, 5, 1)
 
-kfold_GradientBoostingRegressor(features, target, 5, 1)
+kfold_GradientBoostingRegressor(features, targets, 5, 1)
 
-dummy = DummyRegressor(strategy='mean').fit(features, target)
+dummy = DummyRegressor(strategy='mean').fit(features, targets)
 ydummy = dummy.predict(features)
-print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(target, ydummy))))
+print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(targets, ydummy))))
 
-x_train , x_test , y_train , y_test = train_test_split(features , target , test_size = 0.2 ,random_state =2)
+x_train , x_test , y_train , y_test = train_test_split(features , targets , test_size = 0.2 ,random_state =2)
 
 # Create a XGBoost Regressor
 print('\nRunning XGBoost Regression:')

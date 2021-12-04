@@ -1,3 +1,4 @@
+data/clusteredData.csv
 data/neighbourhoodInfo.pkl
 src/__pycache__
 tmp/
