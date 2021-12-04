@@ -1,0 +1,57 @@
+\documentclass[12pt, a4paper, twoside]{article}% 'twocolumn' 
+\usepackage[utf8]{inputenc}% Allow input to be UTF-8
+
+\usepackage{graphicx}% For importing graphics
+\usepackage{amsthm, amsfonts, amssymb}% All the AMS packages
+
+\usepackage[expansion=false]{microtype}% Fixes to make typography better
+
+\usepackage{fancyhdr}% For fancy headers
+
+\usepackage{parskip}% Web-like paragraphs
+\usepackage[a4paper, margin = 3.175cm, includehead, includefoot]{geometry}% May be used to set margins
+
+
+% -------------------------------------------------------------------------
+% Misc settings
+% -------------------------------------------------------------------------
+
+% Spacing between easylist items
+\newcommand{\listSpace}{-0.25em}
+
+% If 'twocolumn', set the spacing as such
+\setlength{\columnsep}{1cm}
+
+% -------------------------------------------------------------------------
+% Document variables
+% -------------------------------------------------------------------------
+
+\def\mytitle{Machine Learning Group Project Report}
+\title{\mytitle}
+\author{Tommy O.}
+
+% -------------------------------------------------------------------------
+% Document start
+% -------------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+
+
+% -------------------------------------------------------------------------
+% Document content start
+% -------------------------------------------------------------------------
+
+\section{Introduction}
+The housing market deeply influences people's lives, with rent or mortgages taking up large parts in people’s monthly budgets. We decided to test whether publicly available data is enough to create machine learning models capable of predicting housing prices with a good degree of accuracy. While originally we were planning to use data from Irish Central Statistics Office (https://data.cso.ie/), after considering the data available, we’ve decided to instead utilize web scraping to gather data regarding New York City housing market, from the US-based real estate marketplace Zillow (https://www.zillow.com/).
+Available details included address, number of bedrooms, number of bathrooms, size in sqft, price and for some, year of construction and number of parking spaces. Using the data, we’ve trained a number of different machine learning algorithms in order to discover which are best suited to this task.
+
+\section{Dataset and Features}
+As the source of our data we chose Zillow, hoping to gather a large amount of data, due to its popularity.
+To gather data from Zillow, we’ve primarily used Selenium, requests and BeautifulSoup4. At first we only used requests, however, Selenium was required to interact with the website, as a large part of the data is loaded only after the user scrolls through the website. We used Selenium to load a page containing listings, and then gathered data for individual listings using the requests module. All HTML content was parsed with BeautifulSoup4 to extract the interesting features. Each house was added to a pandas dataframe, and the resulting dataset was saved as a csv file.
+Due to Zillow only showing the users the first 500 results of a given query, we were forced to give more specific queries, which we achieved by querying individual NYC boroughs, Manhattan, Queens, Bronx, Brooklyn and Staten Island, and specifying a number of price ranges. This added complexity made us focus on just New York City, instead of considering more cities.
+After gathering all of the data, we proceeded to cleanup, where we realized that a number of the listings were duplicates, or didn’t have most of the information, especially the area, year of construction and number of parking spaces. After we discarded the duplicates, the dataset had 1503 data points, each corresponding to houses for sale on Zillow.
+To allow our models to use the address as a feature, we needed to convert it to a numerical value. To achieve this, we used OpenCage Geocoding API to convert the address to geographical coordinates, latitude and longitude. A few addresses were misinterpreted, showing coordinates of different cities, so these data points were also discarded, bringing the size of the final dataset to 1497 points. Most of the listings that made it to the final dataset didn’t have data for year of construction or number of parking spaces, so these weren’t used as input features, leaving number of bedrooms, number of bathrooms, area, and coordinates as inputs, and price as the output.
+
+
+\end{document}
