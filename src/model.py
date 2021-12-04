@@ -27,6 +27,13 @@ def normalize(df):
         norm[i] = (norm[i] - min) / gap
     return norm
 
+def poly_cluster(X, q):
+    cluster = pd.get_dummies(X['cluster_label'], prefix='cluster')
+    X = X.drop(['cluster_label'],axis=1)
+    Xpoly = PolynomialFeatures(q).fit_transform(X)
+    Xpoly = np.column_stack((Xpoly,cluster.to_numpy()))
+    return Xpoly
+
 def kfold_calculation(X, y, model):
     kf = KFold(n_splits=5)
     scores=[]
@@ -36,28 +43,24 @@ def kfold_calculation(X, y, model):
         scores.append(mean_squared_error(y[test],ypred))
     return scores
 
-def poly_cluster(X, q):
-    cluster = pd.get_dummies(X['cluster_label'], prefix='cluster')
-    X = X.drop(['cluster_label'],axis=1)
-    Xpoly = PolynomialFeatures(q).fit_transform(X)
-    Xpoly = np.column_stack((Xpoly,cluster.to_numpy()))
-    return Xpoly
-
-def kfold_polynomials(X, y, model, q_range):
+def kfold_polynomials(X, y, model, Xpolys):
     mean_error=[]; std_error=[]
-    for q in q_range:
-        Xpoly = poly_cluster(X, q)
+    for Xpoly in Xpolys:
         scores = kfold_calculation(Xpoly, y, model)
         mean_error.append(np.array(scores).mean())
         std_error.append(np.array(scores).std())
     return mean_error, std_error
 
 def model_polynomials(X, y):
-    q_range = range(1,4)
-    models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
     res = []
+    models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
+    Xpolys = []
+    q_range = range(1,8)
+    for q in q_range:
+        tmp_poly = poly_cluster(X, q)
+        Xpolys.append(tmp_poly)
     for m in models:
-        m_err, s_err = kfold_polynomials(X, y, m, q_range)
+        m_err, s_err = kfold_polynomials(X, y, m, Xpolys)
         res.append([m_err, s_err])
     colors = ['r', 'b', 'g', 'y']
     labels = ['Linear', 'XGB', 'RF', 'Dummy']
