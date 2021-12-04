@@ -38,7 +38,7 @@ def kfold_calculation(X, y, k, model):
 
 def kfold_polynomials(X, y, k):
     mean_error=[]; std_error=[]
-    q_range = range(1,11)
+    q_range = range(1,7)
     for q in q_range:
         Xpoly = PolynomialFeatures(q).fit_transform(X)
         model = LinearRegression()
@@ -55,7 +55,7 @@ def kfold_Lasso(X, y, k, poly):
     kf = KFold(n_splits=5)
     mean_error=[]; std_error=[]
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
-    c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
+    c_range = [0.0001, 0.001, 0.01, 1, 5, 10, 20, 50]
     for c in c_range:
         model = Lasso(alpha=c)
         scores = kfold_calculation(Xpoly, y, k, model)
@@ -71,7 +71,7 @@ def kfold_Ridge(X, y, k, poly):
     kf = KFold(n_splits=5)
     mean_error=[]; std_error=[]
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
-    c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
+    c_range = [0.0001, 0.001, 0.01, 1, 5, 10, 20, 50]
     for c in c_range:
         model = Ridge(alpha=1/(2*c))
         scores = kfold_calculation(Xpoly, y, k, model)
@@ -87,7 +87,7 @@ def kfold_XGBRegressor(X, y, k, poly):
     kf = KFold(n_splits=5)
     mean_error=[]; std_error=[]
     Xpoly = PolynomialFeatures(poly).fit_transform(X)
-    c_range = [0.0001, 0.001, 0.01, 1, 5, 100, 1000, 10000]
+    c_range = [0.0001, 0.001, 0.01, 1, 5, 10, 20, 50]
     for c in c_range:
         model = XGBRegressor(alpha=c)
         scores = kfold_calculation(Xpoly, y, k, model)
@@ -161,6 +161,7 @@ def clusterModel(coords):
     plt.show()
 
 df = pd.read_csv("data/houseListings.csv")
+df = normalize(df)
 labels = df['Price']
 features = df.drop(['Price'], axis=1)
 # add id
@@ -174,12 +175,14 @@ print(features)
 features = features.merge(coords, how='inner', on='id')
 features = features.drop(['id'], axis=1)
 
-features.to_csv('data/clusteredData.csv', index=None)
-
-features = features.drop(['id'], axis=1)
+features = pd.concat([features, pd.get_dummies(features['cluster_label'], prefix='cluster')], axis=1)
+features = features.drop(['cluster_label'], axis=1)
 print(features)
 
-data = pd.read_csv("../data/geocodedListings2.csv")
+""" #features.to_csv('data/clusteredData.csv', index=None)
+
+
+data = pd.read_csv("data/houseListings.csv")
 # According to the small data set, testing with removing those cols with most 0
 data = data.drop(['Address', 'Construction', 'Parking'],axis=1)
 # Sort data
@@ -188,19 +191,21 @@ data.sort_values('Price',ascending=False)
 data_norm = normalize(data)
 
 labels = data_norm['Price']
-train = data_norm.drop(['Price'],axis=1)
+train = data_norm.drop(['Price'],axis=1) """
+train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
 
-kfold_polynomials(train, labels, 5)
+print(train)
+#kfold_polynomials(train, labels, 5)
 
-kfold_Lasso(train, labels, 5, 7)
+kfold_Lasso(train, labels, 5, 1)
 
-kfold_Ridge(train, labels, 5, 7)
+kfold_Ridge(train, labels, 5, 1)
 
-kfold_XGBRegressor(train, labels, 5, 2)
+kfold_XGBRegressor(train, labels, 5, 1)
 
-kfold_RandomForestRegressor(train, labels, 5, 7)
+kfold_RandomForestRegressor(train, labels, 5, 1)
 
-kfold_GradientBoostingRegressor(train, labels, 5, 7)
+kfold_GradientBoostingRegressor(train, labels, 5, 1)
 
 dummy = DummyRegressor(strategy='mean').fit(train, labels)
 ydummy = dummy.predict(train)
