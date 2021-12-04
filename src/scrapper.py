@@ -202,9 +202,9 @@ def getNeighbourhoodInfo():
 			return neighbourhoodInfo
 
 chromeOptions = webdriver.ChromeOptions()
-chromeOptions.add_argument('--headless')
+#chromeOptions.add_argument('--headless')
 
-header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0',
+header = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0',
   'referer': 'https://www.zillow.com/brooklyn-new-york-ny/?searchQueryState=%7B%22pagination'
 }
 
