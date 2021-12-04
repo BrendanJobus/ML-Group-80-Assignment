@@ -131,10 +131,14 @@ def kfold_GradientBoostingRegressor(X, y, k, poly):
     plt.ylabel('Mean square error')
     plt.show()
 
-def clusterModel(coords):
-    print(coords)
+def clusterModel(features):
+    # Setting up the dataset to cluster the latitude and longitude
+    ids = pd.Series([x for x in range(0, len(features.index))])
+    features['id'] = ids.values
+    coords = features.loc[:,['Latitude', 'Longitude', 'id']]
+    clusterModel(coords)
     coordsWOid = coords[['Latitude', 'Longitude']]
-    print(coordsWOid)
+
     SSE_mean = []; SSE_std = []
     K = range(5, 50, 5)
     for k in K:
@@ -149,7 +153,6 @@ def clusterModel(coords):
     plt.errorbar(K, SSE_mean, yerr=SSE_std, xerr=None, fmt='bx-')
     plt.ylabel('cost'); plt.xlabel('number of clusters'); plt.show()
 
-
     kmeans = KMeans(n_clusters = 15, init = 'k-means++')
     kmeans.fit(coords[coords.columns[0:2]])
     coords['cluster_label'] = kmeans.fit_predict(coords[coords.columns[0:2]])
@@ -160,24 +163,18 @@ def clusterModel(coords):
     plt.scatter(centers[:, 0], centers[:, 1], c='black', s = 200, alpha=0.5)
     plt.show()
 
+    coords = coords.drop(['Latitude', 'Longitude'], axis=1)
+    features = features.merge(coords, how='inner', on='id')
+    features = features.drop(['id'], axis=1)
+    features.to_csv('data/clusteredData.csv', index=None)
+
+    features = features.drop(['id'], axis=1)
+    return features
+
 df = pd.read_csv("data/houseListings.csv")
-labels = df['Price']
+target = df['Price']
 features = df.drop(['Price'], axis=1)
-# add id
-ids = pd.Series([x for x in range(0, len(features.index))])
-features['id'] = ids.values
-
-coords = features.loc[:,['Latitude', 'Longitude', 'id']]
-clusterModel(coords)
-coords = coords.drop(['Latitude', 'Longitude'], axis=1)
-print(features)
-features = features.merge(coords, how='inner', on='id')
-features = features.drop(['id'], axis=1)
-
-features.to_csv('data/clusteredData.csv', index=None)
-
-features = features.drop(['id'], axis=1)
-print(features)
+features = clusterModel(features)
 
 data = pd.read_csv("../data/geocodedListings2.csv")
 # According to the small data set, testing with removing those cols with most 0
