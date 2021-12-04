@@ -39,6 +39,7 @@ def kfold_polynomials(X, y, k):
     mean_error=[]; std_error=[]
     q_range = range(1,7)
     for q in q_range:
+        print(q)
         Xpoly = PolynomialFeatures(q).fit_transform(X)
         model = LinearRegression()
         scores = kfold_calculation(Xpoly, y, k, model)
@@ -48,7 +49,7 @@ def kfold_polynomials(X, y, k):
     plt.errorbar(q_range,mean_error,yerr=std_error,linewidth=3)
     plt.xlabel('q')
     plt.ylabel('Mean square error')
-    #plt.show()
+    plt.show()
 
 def kfold_Lasso(X, y, k, poly):
     kf = KFold(n_splits=5)
@@ -146,6 +147,7 @@ def findBestK(coords, features, targets):
         expFeatures.drop(['id', 'Latitude', 'Longitude'], axis=1)
         expFeatures = pd.concat([expFeatures, pd.get_dummies(expFeatures['cluster_label'], prefix='cluster')], axis=1)
         expFeatures = expFeatures.drop(['cluster_label'], axis=1)
+        kfold_Lasso(expFeatures, targets, 5, 1)
 
 def clusterModel(features, targets):
     # Setting up the dataset to cluster the latitude and longitude
@@ -193,7 +195,7 @@ features = features.drop(['cluster_label'], axis=1)
 # train = features.drop(['Address', 'Construction', 'Parking'],axis=1)
 
 #print(features)
-#kfold_polynomials(train, labels, 5)
+#kfold_polynomials(features, targets, 5)
 
 kfold_Lasso(features, targets, 5, 1)
 
@@ -209,7 +211,7 @@ dummy = DummyRegressor(strategy='mean').fit(features, targets)
 ydummy = dummy.predict(features)
 print('Dummy RMSE:' + str(np.sqrt(mean_squared_error(targets, ydummy))))
 
-x_train , x_test , y_train , y_test = train_test_split(features , targets , test_size = 0.2 ,random_state =2)
+x_train, x_test, y_train, y_test = train_test_split(features, targets, test_size = 0.2, random_state = 42)
 
 # Create a XGBoost Regressor
 print('\nRunning XGBoost Regression:')
