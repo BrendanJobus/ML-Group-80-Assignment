@@ -27,6 +27,13 @@ def normalize(df):
         norm[i] = (norm[i] - min) / gap
     return norm
 
+def poly_cluster(X, q):
+    cluster = pd.get_dummies(X['cluster_label'], prefix='cluster')
+    X = X.drop(['cluster_label'],axis=1)
+    Xpoly = PolynomialFeatures(q).fit_transform(X)
+    Xpoly = np.column_stack((Xpoly,cluster.to_numpy()))
+    return Xpoly
+
 def kfold_calculation(X, y, model):
     kf = KFold(n_splits=5)
     scores=[]
@@ -36,28 +43,24 @@ def kfold_calculation(X, y, model):
         scores.append(mean_squared_error(y[test],ypred))
     return scores
 
-def poly_cluster(X, q):
-    cluster = pd.get_dummies(X['cluster_label'], prefix='cluster')
-    X = X.drop(['cluster_label'],axis=1)
-    Xpoly = PolynomialFeatures(q).fit_transform(X)
-    Xpoly = np.column_stack((Xpoly,cluster.to_numpy()))
-    return Xpoly
-
-def kfold_polynomials(X, y, model, q_range):
+def kfold_polynomials(X, y, model, Xpolys):
     mean_error=[]; std_error=[]
-    for q in q_range:
-        Xpoly = poly_cluster(X, q)
+    for Xpoly in Xpolys:
         scores = kfold_calculation(Xpoly, y, model)
         mean_error.append(np.array(scores).mean())
         std_error.append(np.array(scores).std())
     return mean_error, std_error
 
 def model_polynomials(X, y):
-    q_range = range(1,4)
-    models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
     res = []
+    models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
+    Xpolys = []
+    q_range = range(1,8)
+    for q in q_range:
+        tmp_poly = poly_cluster(X, q)
+        Xpolys.append(tmp_poly)
     for m in models:
-        m_err, s_err = kfold_polynomials(X, y, m, q_range)
+        m_err, s_err = kfold_polynomials(X, y, m, Xpolys)
         res.append([m_err, s_err])
     colors = ['r', 'b', 'g', 'y']
     labels = ['Linear', 'XGB', 'RF', 'Dummy']
@@ -214,11 +217,45 @@ def clusterModel(features, targets):
     features.to_csv('data/clusteredData.csv', index=None)
     return features
 
-df = pd.read_csv("data/houseListings.csv")
-tmp = pd.read_csv("data/clusteredData.csv")
-targets = df['Price']
+def model_cluster_numbers(coords, features, y):
+    res = []
+    models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
+    Xclustered = []
+    K = range(5, 35, 5)
+    for k in K:
+        expFeatures = features.copy()
+        expCoords = coords.copy()
+        kmeans = KMeans(n_clusters=k, init="k-means++")
+        kmeans.fit(expCoords[expCoords.columns[0:2]])
+        expCoords['cluster_label'] = kmeans.fit_predict(expCoords[expCoords.columns[0:2]])
+        expCoords = expCoords.drop(['Latitude', 'Longitude'], axis=1)
+        expFeatures = expFeatures.merge(expCoords, how='inner', on='id')
+        expFeatures = expFeatures.drop(['id', 'Latitude', 'Longitude'], axis=1)
+        expFeatures = pd.concat([expFeatures, pd.get_dummies(expFeatures['cluster_label'], prefix='cluster')], axis=1)
+        expFeatures = expFeatures.drop(['cluster_label'], axis=1)
+        Xclustered.append(expFeatures.to_numpy())
+    for m in models:
+        m_err, s_err = kfold_polynomials(features, y, m, Xclustered)
+        res.append([m_err, s_err])
+    colors = ['r', 'b', 'g', 'y']
+    labels = ['Linear', 'XGB', 'RF', 'Dummy']
+    plt.title('Errors for different numbers of clusters')
+    for i in range(len(res)):
+        plt.errorbar(K,res[i][0],yerr=res[i][1],linewidth=3,color=colors[i])
+        plt.legend(labels[i], numpoints=1)
+        plt.xlabel('Number of clusters')
+        plt.ylabel('Mean square error')
+        plt.show()
+
+df = pd.read_csv("../data/houseListings.csv")
+#tmp = pd.read_csv("data/clusteredData.csv")
+target = df['Price']
 features = df.drop(['Price'], axis=1)
-features = clusterModel(features, targets)
+features = features.drop(['Address', 'Construction', 'Parking'],axis=1)
+ids = pd.Series([x for x in range(0, len(features.index))])
+features['id'] = ids.values
+coords = features.loc[:,['Latitude', 'Longitude', 'id']]
+model_cluster_numbers(coords, features, target)
 #One-hot encoding for cluster numbers
 #features = pd.concat([features, pd.get_dummies(features['cluster_label'], prefix='cluster')], axis=1)
 #features = features.drop(['cluster_label'], axis=1)
@@ -250,7 +287,6 @@ data_norm = normalize(data)
 
 labels = data_norm['Price']
 train = data_norm.drop(['Price'],axis=1)
-train = features
 
 print(train)
 model_polynomials(train, labels)
