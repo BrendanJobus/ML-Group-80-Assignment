@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import math
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
 from sklearn.cluster import KMeans
@@ -151,28 +152,31 @@ def kfold_RandomForestRegressor(X, y, poly):
 
 # Going to use this to find the best 
 def findBestK(coords):
-    # This is the method discussed in class about finding the best k with regards to the cost function
     K = range(5, 50, 5)
-    mean, std = [], []
+    SSE_mean, SSE_std = [], []
+    for k in K:
+        kmeans = KMeans(n_clusters=k)
+        kf = KFold(n_splits=5)
+        m=0;v=0
+        for train, test in kf.split(coords[coords.columns[0:2]]):
+            kmeans.fit(coords.iloc[train])
+            cost=-kmeans.score(coords.iloc[test])
+            m=m+cost;v=v+cost*cost
+        SSE_mean.append(m/5); SSE_std.append(math.sqrt(v/5-(m/5)*(m/5)))
+    plt.errorbar(K, SSE_mean, yerr=SSE_std, xerr=None, fmt='bx-')
+    #plt.ylabel('cost'); plt.xlabel('number of clusters'); plt.title('best k'); plt.show()
+
+    K = range(10, 25, 5)
     for k in K:
         expCoords = coords.copy()
-
-        kmeans = KMeans(n_clusters=k, init="k-means++")
+        kmeans = KMeans(n_clusters = k, init='k-means++')
         kmeans.fit(expCoords[expCoords.columns[0:2]])
         expCoords['cluster_label'] = kmeans.fit_predict(expCoords[expCoords.columns[0:2]])
+        centers = kmeans.cluster_centers_
 
-        clusterMeans = []; clusterStd = []
-        for cluster in range(k):
-            allClusters = expCoords.loc[expCoords['cluster_label'] == cluster]
-            clusterMeans.append([cluster, allClusters['Price'].mean()])
-            clusterStd.append(allClusters['Price'].std())
-        std.append(sum(clusterStd)/len(clusterStd))
-    plt.bar(K, std)
-    plt.show()
-            
-
-    # for finding the best k, get the mean for each cluster and the std
-    # std = sqrt( E(datapoint - mean) / N )
+        expCoords.plot.scatter(x='Latitude', y='Longitude', c=expCoords['cluster_label'], s=50, cmap='viridis')
+        plt.scatter(centers[:, 0], centers[:, 1], c='black', s=200, alpha=0.5); plt.title(f"mapping of {k} clusters")
+        plt.show()
 
 def clusterModel(features, targets):
     # Setting up the dataset to cluster the latitude and longitude
@@ -182,14 +186,9 @@ def clusterModel(features, targets):
     coords['Price'] = targets
     findBestK(coords)
 
-    kmeans = KMeans(n_clusters = 15, init = 'k-means++')
+    kmeans = KMeans(n_clusters = 20, init = 'k-means++')
     kmeans.fit(coords[coords.columns[0:2]])
     coords['cluster_label'] = kmeans.fit_predict(coords[coords.columns[0:2]])
-    centers = kmeans.cluster_centers_
-    
-    coords.plot.scatter(x = 'Latitude', y='Longitude', c=coords['cluster_label'], s=50, cmap='viridis')
-    plt.scatter(centers[:, 0], centers[:, 1], c='black', s = 200, alpha=0.5)
-    plt.show()
 
     coords = coords.drop(['Latitude', 'Longitude'], axis=1)
     features = features.merge(coords, how='inner', on='id')
@@ -201,7 +200,7 @@ def model_cluster_numbers(coords, features, y):
     res = []
     models = [LinearRegression(), XGBRegressor(), RandomForestRegressor(), DummyRegressor(strategy='mean')]
     Xclustered = []
-    K = range(5, 35, 5)
+    K = range(10, 25, 5)
     for k in K:
         expFeatures = features.copy()
         expCoords = coords.copy()
@@ -219,14 +218,26 @@ def model_cluster_numbers(coords, features, y):
         res.append([m_err, s_err])
     colors = ['r', 'b', 'g', 'y']
     labels = ['Linear', 'XGB', 'RF', 'Dummy']
-    plt.title('Errors for different numbers of clusters')
     for i in range(len(res)):
         plt.errorbar(K,res[i][0],yerr=res[i][1],linewidth=3,color=colors[i])
         plt.legend(labels[i], numpoints=1)
         plt.xlabel('Number of clusters')
         plt.ylabel('Mean square error')
+        plt.title(f'Errors for different numbers of clusters for {labels[i]} model')
         plt.show()
 
+# This function is just all the testing of clusters put into one
+def clusterTesting():
+    data = pd.read_csv("data/houseListings.csv")
+    targets = data['Price']
+    features = data.drop('Price', axis=1)
+    ids = pd.Series([x for x in range(0, len(features.index))])
+    features['id'] = ids.values
+    coords = features.loc[:,['Latitude', 'Longitude', 'id']]
+    features = features.drop(['Address', 'Construction', 'Parking'], axis=1)
+    clusterModel(features, targets)
+    model_cluster_numbers(coords, features, targets)
+    
 def model_performance(data, labels, model):
     Xpoly = poly_cluster(data, 1)
     x_train , x_test , y_train , y_test = train_test_split(Xpoly , labels , test_size = 0.2 , random_state =42)
@@ -251,8 +262,8 @@ def model_performance(data, labels, model):
     print('Test MSE score:', test_mse)
     print('Train MSE score:', train_mse)
 
-df = pd.read_csv("../data/houseListings.csv")
-cluster_df = pd.read_csv("../data/clusteredData.csv")
+df = pd.read_csv("data/houseListings.csv")
+cluster_df = pd.read_csv("data/clusteredData.csv")
 features = cluster_df
 
 df = df.drop(['Address', 'Construction', 'Parking'],axis=1)
